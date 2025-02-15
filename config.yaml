@@ -1,7 +1,7 @@
 port: 7890 # port of HTTP
 socks-port: 7891 # port of SOCKS5
 redir-port: 7892 # redir port for Linux and macOS
-allow-lan: false
+allow-lan: true
 
 # Only applicable when setting allow-lan to true
 # "*": bind all IP addresses
@@ -58,8 +58,7 @@ Proxy:
 Proxy Group:
 - name: "auto"
   type: url-test
-  proxies:
-    - http
+  proxies: [DIRECT]
   url: 'http://www.gstatic.com/generate_204'
   interval: 300
 

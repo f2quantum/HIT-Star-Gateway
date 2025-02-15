@@ -2,6 +2,12 @@
 Harbin Institute of Technology 远程注册服务
 
 
+## 构建容器
+
+``` bash
+
+make build
+```
 ## 启动
 
 ``` bash
@@ -13,5 +19,4 @@ docker run --name mihomo -d \
     -p 9090:9090 \
     -v /path/to/config:/root/.config/mihomo \
     izumiko/mihomo
-
 ```
