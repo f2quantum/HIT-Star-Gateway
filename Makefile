@@ -1,3 +1,2 @@
-
 build:
-	docker build -t hit-star-gateway:1.0 . 
+	docker build -t frzquantum/hit-star-gateway:1.0 . 

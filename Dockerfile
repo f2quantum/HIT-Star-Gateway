@@ -1,10 +1,11 @@
 FROM metacubex/mihomo:latest
 LABEL maintainer="frzquantum <frzquantum@gmail.com>"
 WORKDIR /opt/frp
-ADD ./frp_onekey.sh /opt/frp/
+ADD ./exec/frpc /opt/frp/
 ADD ./frpc.toml /opt/frp/
-RUN chmod +x frp_onekey.sh
-RUN bash frp_onekey.sh -a install -c frpc
+RUN chmod +x /opt/frp/frpc
 
 ADD ./config.yaml /root/.config/mihomo
-ENTRYPOINT ["bash"] 
+# ENTRYPOINT ["/opt/frp/frpc","-c","/opt/frp/frpc.toml"] 
+
+ENTRYPOINT [ "sh" ]
