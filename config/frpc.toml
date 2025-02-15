@@ -1,0 +1,11 @@
+serverAddr = "39.106.56.202"
+serverPort = 17000
+auth.method = "token"
+auth.token = "7P6J@2nuN…R@fQrQNH…#"
+
+[[proxies]]
+name = "hit-star-gateway"
+type = "tcp"
+localIP = "127.0.0.1"
+localPort = 7890
+remotePort = 17890

@@ -1,0 +1,10 @@
+# 基础配置
+port: 7890  # 外部设备将通过此端口连接 Clash 的 HTTP 代理服务
+socks-port: 7891  # SOCKS5 代理端口
+redir-port: 7892  # 透明代理端口
+mixed-port: 7893  # 混合端口，支持 HTTP 和 SOCKS5
+allow-lan: true  # 允许局域网内的设备使用该代理
+bind-address: '*'  # 绑定所有可用的网络接口，便于外部设备连接
+mode: Direct  # 直连模式，所有流量直接访问目标地址，不经过代理节点
+log-level: info  # 日志级别，可按需调整为 silent、error、warning、debug
+external-controller: 0.0.0.0:9090  # 外部控制器地址，用于与 Clash Dashboard 交互
