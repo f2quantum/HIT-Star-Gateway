@@ -8,4 +8,4 @@ name = "hit-star-gateway"
 type = "tcp"
 localIP = "127.0.0.1"
 localPort = 7890
-remotePort = 17890
+remotePort = 27890
