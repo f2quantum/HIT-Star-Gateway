@@ -8,4 +8,11 @@ name = "hit-star-gateway"
 type = "tcp"
 localIP = "127.0.0.1"
 localPort = 7890
-remotePort = 27890
+remotePort = 37890
+
+[[proxies]]
+name = "hit-star-ssh"
+type = "tcp"
+localIP = "127.0.0.1"
+localPort = 22
+remotePort = 37822

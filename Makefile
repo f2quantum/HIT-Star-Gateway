@@ -1,10 +1,15 @@
+VERSION = 1.3
 build:
-	docker build -t frzquantum/hit-star-gateway:1.1 . 
+	docker build -t frzquantum/hit-star-gateway:$(VERSION) . 
 run: build
-	docker run -itd --name hit-star-gateway --net=host -p 7890:7890 -p 9090:9090 frzquantum/hit-star-gateway:1.0
+	docker run -itd --name hit-star-gateway frzquantum/hit-star-gateway:$(VERSION)
 stop:
 	docker stop hit-star-gateway
 remove: stop
 	docker rm hit-star-gateway
 exec:
 	docker exec -it hit-star-gateway bash
+supervisorctl:
+	docker exec -it hit-star-gateway supervisorctl status
+push:
+	docker push frzquantum/hit-star-gateway:$(VERSION)
