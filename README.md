@@ -1,5 +1,8 @@
 # 誘導已亮，前方淨空
-Harbin Institute of Technology 远程注册服务
+Harbin Institute of Technology 星门穿梭服务
+## 主要原理图
+![image](https://i.111666.best/image/YQ39J9lX1Z5AKluxhtCJx2.png)
+
 
 ## 搭建frps
 你可以参考：`example/frps.ini` 下面的配置文件

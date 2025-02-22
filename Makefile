@@ -1,4 +1,4 @@
-VERSION = 1.4
+VERSION = 1.5
 build:
 	docker build -t frzquantum/hit-star-gateway:$(VERSION) . 
 run: build
@@ -11,5 +11,5 @@ exec:
 	docker exec -it hit-star-gateway bash
 supervisorctl:
 	docker exec -it hit-star-gateway supervisorctl status
-push:
+push: build
 	docker push frzquantum/hit-star-gateway:$(VERSION)
