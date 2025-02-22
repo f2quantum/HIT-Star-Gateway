@@ -32,3 +32,13 @@ docker exec -it hit-star-gateway bash
 tail -f /var/log/mihomo.out.log
 tail -f /var/log/frpc.out.log
 ``` 
+
+## 启动服务端
+
+```
+sudo apt install supervisor
+mkdir -p /opt/hit-star-gateway
+cp -r ./service/server /opt/hit-star-gateway
+cp -r ./service/server/supervisor/* /etc/supervisor/conf.d/
+supervisorctl update
+```

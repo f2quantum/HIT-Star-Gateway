@@ -1,0 +1,7 @@
+[program.star-gateway-server]
+
+command = "python3 /opt/hit-star-gateway/server/server.py"
+autostart = true
+autorestart = true
+stderr_logfile = "/var/log/server.err.log"
+stdout_logfile = "/var/log/server.out.log"

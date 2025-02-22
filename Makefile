@@ -1,4 +1,4 @@
-VERSION = 1.3
+VERSION = 1.4
 build:
 	docker build -t frzquantum/hit-star-gateway:$(VERSION) . 
 run: build

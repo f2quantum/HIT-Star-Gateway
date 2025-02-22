@@ -12,7 +12,7 @@ external-controller: 0.0.0.0:9090  # 外部控制器地址，用于与 Clash Das
 dns:
   enable: true # set true to enable dns (default is false)
   ipv6: false # default is false
-  listen: 0.0.0.0:53
+  listen: 0.0.0.0:15353
   enhanced-mode: fake-ip # or redir-host
   fake-ip-range: 198.18.0.1/16 # if you don't know what it is, don't change it
   nameserver:

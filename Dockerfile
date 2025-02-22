@@ -9,13 +9,15 @@ ADD ./config/frpc.toml /opt/hit-star-gateway/
 ADD ./service/client /opt/hit-star-gateway/client
 
 RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories \
-    && apk add --no-cache bash supervisor openssh-server python3 py3-pip
+    && apk add --no-cache bash supervisor openssh-server python3 py3-pip openssh vim
 
 RUN pip config set global.index-url https://mirrors.tuna.tsinghua.edu.cn/pypi/web/simple \
     && pip3 install -r /opt/hit-star-gateway/client/requirements.txt --break-system-packages
+
 RUN chmod +x /opt/hit-star-gateway/frpc \
     && mkdir -p /var/log/supervisor \
-    && mkdir -p /etc/supervisor/conf.d 
+    && mkdir -p /etc/supervisor/conf.d \
+    && echo '114.114.114.114' > /etc/resolv.conf
 
 RUN sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config \
     && sed -i 's/#PasswordAuthentication yes/PasswordAuthentication yes/' /etc/ssh/sshd_config \

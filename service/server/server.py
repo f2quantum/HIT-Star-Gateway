@@ -1,118 +1,130 @@
-from flask import Flask, render_template, request, jsonify
 import sqlite3
+from flask import Flask, jsonify, render_template
+from flask_restful import Api, Resource, reqparse
+import threading
 import time
-from threading import Lock
-from collections import deque
+from datetime import datetime
 
+# 初始化Flask应用
 app = Flask(__name__)
-lock = Lock()
+api = Api(app)
 
-# 初始化端口池
-gateway_ports = deque(range(30000, 35000))
-ssh_ports = deque(range(35001, 40000))
+# 定义自定义过滤器：将时间戳转换为 datetime 对象
+@app.template_filter('timestamp_to_datetime')
+def timestamp_to_datetime(timestamp):
+    return datetime.fromtimestamp(timestamp)
+
+# 定义自定义过滤器：strftime 用于格式化日期时间
+@app.template_filter('strftime')
+def strftime_filter(dt, format_str):
+    return dt.strftime(format_str)
 
 # 数据库初始化
-def init_db():
-    conn = sqlite3.connect('clients.db')
-    c = conn.cursor()
-    c.execute('''CREATE TABLE IF NOT EXISTS clients
-                 (uuid TEXT PRIMARY KEY,
-                  gateway_port INTEGER,
-                  ssh_port INTEGER,
-                  last_heartbeat REAL,
-                  status TEXT)''')
-    conn.commit()
-    conn.close()
+conn = sqlite3.connect('clients.db')
+c = conn.cursor()
+# 创建表时直接包含 last_seen 列
+c.execute('''CREATE TABLE IF NOT EXISTS clients
+             (uuid TEXT PRIMARY KEY, gateway_port INTEGER, ssh_port INTEGER, last_seen REAL)''')
+conn.commit()
 
-# 端口回收线程
-def port_reclaimer():
+# 端口集合
+gateway_ports = list(range(30000, 35001))
+ssh_ports = list(range(35001, 40000))
+
+# 从数据库中读取已占用的端口
+c.execute("SELECT gateway_port, ssh_port FROM clients")
+occupied_ports = c.fetchall()
+for gateway_port, ssh_port in occupied_ports:
+    if gateway_port in gateway_ports:
+        gateway_ports.remove(gateway_port)
+    if ssh_port in ssh_ports:
+        ssh_ports.remove(ssh_port)
+
+# 解析器
+parser = reqparse.RequestParser()
+parser.add_argument('uuid', type=str, required=True, help='UUID is required')
+
+# 检查客户端是否失活的线程
+def check_inactivity():
     while True:
+        current_time = time.time()
+        conn = sqlite3.connect('clients.db')
+        c = conn.cursor()
+        c.execute("SELECT uuid, gateway_port, ssh_port FROM clients WHERE last_seen < ?", (current_time - 10,))
+        inactive_clients = c.fetchall()
+        for uuid, gateway_port, ssh_port in inactive_clients:
+            gateway_ports.append(gateway_port)
+            ssh_ports.append(ssh_port)
+            c.execute("DELETE FROM clients WHERE uuid =?", (uuid,))
+        conn.commit()
+        conn.close()
+        # 修改为每 10 秒检测一次
         time.sleep(10)
-        with lock:
-            conn = sqlite3.connect('clients.db')
-            c = conn.cursor()
-            c.execute("SELECT uuid, last_heartbeat FROM clients")
-            clients = c.fetchall()
-            current_time = time.time()
-            
-            for client in clients:
-                if current_time - client > 10:
-                    # 回收端口
-                    c.execute("SELECT gateway_port, ssh_port FROM clients WHERE uuid=?", (client,))
-                    ports = c.fetchone()
-                    gateway_ports.append(ports)
-                    ssh_ports.append(ports)
-                    
-                    # 更新状态
-                    c.execute("UPDATE clients SET status='offline' WHERE uuid=?", (client,))
-                    conn.commit()
-            conn.close()
 
-# Flask路由
-@app.route('/register', methods=['POST'])
-def register():
-    uuid = request.json.get('uuid')
-    with lock:
+# 注册资源
+class Register(Resource):
+    def post(self):
+        args = parser.parse_args()
+        uuid = args['uuid']
         if not gateway_ports or not ssh_ports:
-            return jsonify({"error": "No available ports"}), 500
-            
-        gateway = gateway_ports.popleft()
-        ssh = ssh_ports.popleft()
-        
+            return {'message': 'No available ports'}, 500
+        gateway_port = gateway_ports.pop(0)
+        ssh_port = ssh_ports.pop(0)
+        current_time = time.time()
         conn = sqlite3.connect('clients.db')
         c = conn.cursor()
-        c.execute("INSERT INTO clients VALUES (?,?,?,?,?)",
-                 (uuid, gateway, ssh, time.time(), 'online'))
-        conn.commit()
+        try:
+            c.execute("INSERT INTO clients VALUES (?,?,?,?)", (uuid, gateway_port, ssh_port, current_time))
+            conn.commit()
+        except sqlite3.IntegrityError:
+            return {'message': 'UUID already exists'}, 400
         conn.close()
-        
-    return jsonify({"gateway": gateway, "ssh": ssh})
+        return {'gateway_port': gateway_port, 'ssh_port': ssh_port}, 200
 
-@app.route('/heartbeat', methods=['POST'])
-def heartbeat():
-    uuid = request.json.get('uuid')
-    with lock:
+# 心跳资源
+class Heartbeat(Resource):
+    def post(self):
+        args = parser.parse_args()
+        uuid = args['uuid']
+        current_time = time.time()
         conn = sqlite3.connect('clients.db')
         c = conn.cursor()
-        c.execute("UPDATE clients SET last_heartbeat=?, status='online' WHERE uuid=?",
-                 (time.time(), uuid))
+        c.execute("UPDATE clients SET last_seen =? WHERE uuid =?", (current_time, uuid))
+        rows_affected = conn.total_changes
         conn.commit()
         conn.close()
-    return jsonify({"status": "updated"})
+        if rows_affected == 0:
+            return {'message': 'Client not found'}, 404
+        return {'message': 'Heartbeat received'}, 200
 
-@app.route('/dashboard')
-def dashboard():
+# Web界面
+@app.route('/')
+def index():
     conn = sqlite3.connect('clients.db')
     c = conn.cursor()
-    c.execute("SELECT * FROM clients")
-    data = c.fetchall()
+    c.execute("SELECT uuid, gateway_port, ssh_port, last_seen FROM clients")
+    clients = c.fetchall()
+    current_time = time.time()
+    active_clients = []
+    for uuid, gateway_port, ssh_port, last_seen in clients:
+        status = 'Online' if current_time - last_seen < 10 else 'Offline'
+        active_clients.append({
+            'uuid': uuid,
+            'gateway_port': gateway_port,
+            'ssh_port': ssh_port,
+            'last_seen': last_seen,
+            'status': status
+        })
     conn.close()
-    return render_template('./templates/dashboard.html', clients=data)
+    return render_template('index.html', clients=active_clients)
 
-# 新增服务启动初始化模块
-def load_allocated_ports():
-    """从数据库加载已分配端口"""
-    conn = sqlite3.connect('clients.db')
-    c = conn.cursor()
-    c.execute("SELECT gateway_port, ssh_port FROM clients WHERE status='online'")
-    allocated = c.fetchall()
-    conn.close()
-    
-    # 过滤已分配端口
-    allocated_ports = set()
-    for ports in allocated:
-        allocated_ports.add(ports[0])
-        allocated_ports.add(ports[1])
-
-    # 重新生成可用端口池
-    global gateway_ports, ssh_ports
-    gateway_ports = deque([p for p in range(30000, 35001) if p not in allocated_ports])
-    ssh_ports = deque([p for p in range(35001, 40000) if p not in allocated_ports])
-
+# 添加资源
+api.add_resource(Register, '/register')
+api.add_resource(Heartbeat, '/heartbeat')
 
 if __name__ == '__main__':
-    init_db()
-    load_allocated_ports()
-    import threading
-    threading.Thread(target=port_reclaimer, daemon=True).start()
+    # 启动检查失活线程
+    inactivity_thread = threading.Thread(target=check_inactivity)
+    inactivity_thread.daemon = True
+    inactivity_thread.start()
     app.run(host='0.0.0.0', port=20010)
